@@ -1,433 +1,320 @@
 <template>
-  <div class="page">
-    <!-- Header minimal -->
-    <header class="header">
-      <div class="header__inner container">
-        <div class="brand">
-          <span class="brand__logo" aria-hidden="true">
-            <svg fill="currentColor" viewBox="0 0 48 48">
-              <path
-                d="M8.57829 8.57829C5.52816 11.6284 3.451 15.5145 2.60947 19.7452C1.76794 23.9758 2.19984 28.361 3.85056 32.3462C5.50128 36.3314 8.29667 39.7376 11.8832 42.134C15.4698 44.5305 19.6865 45.8096 24 45.8096C28.3135 45.8096 32.5302 44.5305 36.1168 42.134C39.7033 39.7375 42.4987 36.3314 44.1494 32.3462C45.8002 28.361 46.2321 23.9758 45.3905 19.7452C44.549 15.5145 42.4718 11.6284 39.4217 8.57829L24 24L8.57829 8.57829Z"
-              />
-            </svg>
-          </span>
-          <router-link class="brand__name" to="/">Urbano</router-link>
-        </div>
+    <v-container class="register-bg" fluid>
+        <v-row class="register-row" align="center" justify="center" no-gutters>
+            <v-col cols="12" md="10" lg="8" xl="7">
+                <v-card class="register-card" rounded="xl" elevation="6">
+                    <v-row no-gutters>
+                        <!-- Panel izquierdo -->
+                        <v-col cols="12" md="6" class="d-none d-md-flex">
+                            <div class="left-panel">
+                                <div class="brand">
+                                    <v-icon icon="mdi-feather" size="22" class="mr-2" />
+                                    <span class="brand-text">TiendaModa</span>
+                                </div>
 
-        <div class="actions">
-          <router-link class="iconbtn" to="/buscar" aria-label="Buscar">
-            <span class="material-symbols-outlined">search</span>
-          </router-link>
-          <router-link class="iconbtn" to="/carrito" aria-label="Carrito">
-            <span class="material-symbols-outlined">shopping_bag</span>
-          </router-link>
-        </div>
-      </div>
-    </header>
+                                <h2 class="headline">Crea tu cuenta</h2>
+                                <p class="subhead">
+                                    Regístrate para guardar favoritos, gestionar tu carrito y seguir tus pedidos.
+                                </p>
 
-    <main class="container main">
-      <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <router-link class="breadcrumbs__link" to="/">Inicio</router-link>
-        <span class="breadcrumbs__sep">/</span>
-        <span class="breadcrumbs__current">Registro</span>
-      </nav>
+                                <div class="perks">
+                                    <div class="perk">
+                                        <v-icon icon="mdi-account-heart-outline" />
+                                        <span>Wishlist y recomendaciones</span>
+                                    </div>
+                                    <div class="perk">
+                                        <v-icon icon="mdi-cart-outline" />
+                                        <span>Carrito persistente</span>
+                                    </div>
+                                    <div class="perk">
+                                        <v-icon icon="mdi-truck-fast-outline" />
+                                        <span>Historial y seguimiento</span>
+                                    </div>
+                                </div>
 
-      <section class="authWrap">
-        <!-- Card -->
-        <div class="card">
-          <div class="cardTop">
-            <h1 class="title">Crear cuenta</h1>
-            <p class="subtitle">Regístrate para comprar, guardar favoritos y ver tus pedidos.</p>
-          </div>
+                                <div class="promo">
+                                    <div class="promo-badge">Tip</div>
+                                    <div class="promo-text">
+                                        Usa un email real para recuperar tu contraseña si la olvidas.
+                                    </div>
+                                </div>
+                            </div>
+                        </v-col>
 
-          <form class="form" @submit.prevent="onSubmit">
-            <div class="grid2">
-              <div class="field">
-                <label class="label" for="name">Nombre</label>
-                <input
-                  id="name"
-                  v-model.trim="name"
-                  class="input"
-                  type="text"
-                  autocomplete="name"
-                  placeholder="Tu nombre"
-                  :aria-invalid="!!errors.name"
-                />
-                <p v-if="errors.name" class="error">{{ errors.name }}</p>
-              </div>
+                        <!-- Panel derecho: Form -->
+                        <v-col cols="12" md="6">
+                            <div class="right-panel">
+                                <div class="d-flex d-md-none align-center mb-6">
+                                    <v-icon icon="mdi-feather" size="22" class="mr-2" />
+                                    <span class="text-h6 font-weight-bold">TiendaModa</span>
+                                </div>
 
-              <div class="field">
-                <label class="label" for="email">Email</label>
-                <input
-                  id="email"
-                  v-model.trim="email"
-                  class="input"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="tuemail@ejemplo.com"
-                  :aria-invalid="!!errors.email"
-                />
-                <p v-if="errors.email" class="error">{{ errors.email }}</p>
-              </div>
-            </div>
+                                <div class="mb-2">
+                                    <div class="text-h5 font-weight-bold">Crear cuenta</div>
+                                    <div class="text-medium-emphasis mt-1">
+                                        Completa tus datos para registrarte.
+                                    </div>
+                                </div>
 
-            <div class="field">
-              <label class="label" for="password">Contraseña</label>
-              <div class="passwordRow">
-                <input
-                  id="password"
-                  v-model="password"
-                  class="input"
-                  :type="showPassword ? 'text' : 'password'"
-                  autocomplete="new-password"
-                  placeholder="••••••••"
-                  :aria-invalid="!!errors.password"
-                />
-                <button
-                  class="iconbtn iconbtn--small"
-                  type="button"
-                  @click="showPassword = !showPassword"
-                  :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
-                >
-                  <span class="material-symbols-outlined">
-                    {{ showPassword ? "visibility_off" : "visibility" }}
-                  </span>
-                </button>
-              </div>
-              <p v-if="errors.password" class="error">{{ errors.password }}</p>
-              <p class="hint">Mínimo 6 caracteres. Recomendado: mayúsculas, números y símbolos.</p>
-            </div>
+                                <v-alert v-if="errorMsg" type="error" variant="tonal" class="mt-4"
+                                    density="comfortable">
+                                    {{ errorMsg }}
+                                </v-alert>
 
-            <div class="field">
-              <label class="label" for="password2">Confirmar contraseña</label>
-              <input
-                id="password2"
-                v-model="password2"
-                class="input"
-                type="password"
-                autocomplete="new-password"
-                placeholder="Repite tu contraseña"
-                :aria-invalid="!!errors.password2"
-              />
-              <p v-if="errors.password2" class="error">{{ errors.password2 }}</p>
-            </div>
+                                <v-form ref="form" class="mt-6" @submit.prevent="onSubmit">
+                                    <v-text-field v-model="name" label="Nombre" placeholder="Tu nombre"
+                                        autocomplete="name" :rules="nameRules"
+                                        prepend-inner-icon="mdi-account-outline" />
 
-            <div class="row">
-              <label class="checkbox">
-                <input type="checkbox" v-model="terms" />
-                <span>
-                  Acepto los <button class="linkBtn" type="button" @click="openTerms">términos</button> y la
-                  <button class="linkBtn" type="button" @click="openPrivacy">política de privacidad</button>.
-                </span>
-              </label>
-            </div>
-            <p v-if="errors.terms" class="error" style="margin-top:-6px">{{ errors.terms }}</p>
+                                    <v-text-field v-model="email" class="mt-2" label="Email"
+                                        placeholder="tuemail@ejemplo.com" type="email" autocomplete="email"
+                                        :rules="emailRules" prepend-inner-icon="mdi-email-outline" />
 
-            <button class="btn-primary w100" type="submit" :disabled="loading">
-              <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
-              <span>{{ loading ? "Creando cuenta..." : "Crear cuenta" }}</span>
-            </button>
+                                    <v-text-field v-model="password" class="mt-2" label="Contraseña"
+                                        placeholder="••••••••" :type="showPassword ? 'text' : 'password'"
+                                        autocomplete="new-password" :rules="passwordRules"
+                                        prepend-inner-icon="mdi-lock-outline"
+                                        :append-inner-icon="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+                                        @click:append-inner="showPassword = !showPassword" />
 
-            <p v-if="serverMessage" class="serverMsg">{{ serverMessage }}</p>
+                                    <v-text-field v-model="confirmPassword" class="mt-2" label="Confirmar contraseña"
+                                        placeholder="••••••••" :type="showConfirm ? 'text' : 'password'"
+                                        autocomplete="new-password" :rules="confirmRules"
+                                        prepend-inner-icon="mdi-lock-check-outline"
+                                        :append-inner-icon="showConfirm ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+                                        @click:append-inner="showConfirm = !showConfirm" />
 
-            <div class="divider"></div>
+                                    <div class="mt-2">
+                                        <v-checkbox v-model="acceptTerms" density="comfortable" hide-details
+                                            color="primary">
+                                            <template #label>
+                                                <span class="text-body-2">
+                                                    Acepto los
+                                                    <RouterLink class="link" to="/terminos">términos</RouterLink>
+                                                    y la
+                                                    <RouterLink class="link" to="/privacidad">política de privacidad
+                                                    </RouterLink>.
+                                                </span>
+                                            </template>
+                                        </v-checkbox>
+                                    </div>
 
-            <p class="bottomText">
-              ¿Ya tienes cuenta?
-              <router-link class="link" to="/login">Inicia sesión</router-link>
-            </p>
-          </form>
-        </div>
+                                    <v-btn type="submit" color="primary" size="large" class="mt-4" block rounded="lg"
+                                        :loading="loading">
+                                        Crear cuenta
+                                    </v-btn>
 
-        <!-- Side -->
-        <aside class="side">
-          <div class="sideCard">
-            <h2 class="sideTitle">Qué consigues al registrarte</h2>
-            <ul class="list">
-              <li>Carrito persistente</li>
-              <li>Wishlist y seguimiento</li>
-              <li>Historial y estado de pedidos</li>
-              <li>Checkout más rápido</li>
-            </ul>
+                                    <div class="d-flex align-center my-6">
+                                        <v-divider />
+                                        <span class="mx-3 text-medium-emphasis text-body-2">o</span>
+                                        <v-divider />
+                                    </div>
 
-            <div class="callout">
-              <span class="material-symbols-outlined">verified</span>
-              <span>Tu cuenta te permite comprar y gestionar pedidos fácilmente.</span>
-            </div>
+                                    <v-btn variant="outlined" size="large" block rounded="lg"
+                                        class="text-none social-btn" @click="onSocial('google')">
+                                        <img class="social-logo" src="../assets/google.png" alt="Google" />
+                                        Continuar con Google
+                                    </v-btn>
 
-            <div class="mini">
-              <div class="mini__title">Consejo</div>
-              <div class="mini__text">
-                Usa un email real: ahí recibirás confirmaciones y el estado del envío.
-              </div>
-            </div>
-          </div>
-        </aside>
-      </section>
-    </main>
-  </div>
+                                    <v-btn variant="outlined" size="large" block rounded="lg"
+                                        class="text-none social-btn mt-3" @click="onSocial('github')">
+                                        <img class="social-logo" src="../assets/github.png" alt="GitHub" />
+                                        Continuar con GitHub
+                                    </v-btn>
+
+                                    <div class="text-center mt-7">
+                                        <span class="text-medium-emphasis">¿Ya tienes cuenta?</span>
+                                        <RouterLink to="/login" class="link ml-1">Iniciar sesión</RouterLink>
+                                    </div>
+                                </v-form>
+                            </div>
+                        </v-col>
+                    </v-row>
+
+                    <hr>
+
+                    <div class="text-center text-medium-emphasis text-body-2 mt-4 mb-4">
+                        Registrándote aceptas nuestras <RouterLink class="link" to="/terminos">condiciones</RouterLink>.
+                    </div>
+                </v-card>
+            </v-col>
+        </v-row>
+    </v-container>
 </template>
 
 <script setup>
-import { reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { ref } from 'vue'
 
-const router = useRouter();
+const form = ref(null)
 
-const name = ref("");
-const email = ref("");
-const password = ref("");
-const password2 = ref("");
-const terms = ref(false);
-const showPassword = ref(false);
+const name = ref('')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
 
-const loading = ref(false);
-const serverMessage = ref("");
+const acceptTerms = ref(true)
+const showPassword = ref(false)
+const showConfirm = ref(false)
 
-const errors = reactive({
-  name: "",
-  email: "",
-  password: "",
-  password2: "",
-  terms: "",
-});
+const loading = ref(false)
+const errorMsg = ref('')
 
-function validate() {
-  errors.name = "";
-  errors.email = "";
-  errors.password = "";
-  errors.password2 = "";
-  errors.terms = "";
+const nameRules = [
+    v => !!v || 'El nombre es obligatorio',
+    v => (v?.trim()?.length ?? 0) >= 2 || 'Mínimo 2 caracteres',
+]
 
-  if (!name.value) errors.name = "El nombre es obligatorio.";
-  else if (name.value.length < 2) errors.name = "El nombre debe tener al menos 2 caracteres.";
+const emailRules = [
+    v => !!v || 'El email es obligatorio',
+    v => /.+@.+\..+/.test(v) || 'Email no válido',
+]
 
-  if (!email.value) errors.email = "El email es obligatorio.";
-  else if (!/^\S+@\S+\.\S+$/.test(email.value)) errors.email = "Introduce un email válido.";
+const passwordRules = [
+    v => !!v || 'La contraseña es obligatoria',
+    v => (v?.length ?? 0) >= 6 || 'Mínimo 6 caracteres',
+]
 
-  if (!password.value) errors.password = "La contraseña es obligatoria.";
-  else if (password.value.length < 6) errors.password = "Debe tener al menos 6 caracteres.";
-
-  if (!password2.value) errors.password2 = "Confirma tu contraseña.";
-  else if (password2.value !== password.value) errors.password2 = "Las contraseñas no coinciden.";
-
-  if (!terms.value) errors.terms = "Debes aceptar los términos para continuar.";
-
-  return !errors.name && !errors.email && !errors.password && !errors.password2 && !errors.terms;
-}
+const confirmRules = [
+    v => !!v || 'Confirma la contraseña',
+    v => v === password.value || 'Las contraseñas no coinciden',
+]
 
 async function onSubmit() {
-  serverMessage.value = "";
-  if (!validate()) return;
+    errorMsg.value = ''
 
-  loading.value = true;
+    const res = await form.value?.validate()
+    if (!res?.valid) return
 
-  try {
-    // Placeholder: luego aquí va el registro real en Laravel
-    // Ejemplo futuro: await axios.post('/register', {...})
-    await new Promise((r) => setTimeout(r, 500));
+    if (!acceptTerms.value) {
+        errorMsg.value = 'Debes aceptar los términos y la política de privacidad.'
+        return
+    }
 
-    localStorage.setItem(
-      "urbano_auth_demo",
-      JSON.stringify({ name: name.value, email: email.value, registeredAt: new Date().toISOString() })
-    );
-
-    serverMessage.value = "Cuenta creada ✅";
-    router.push("/");
-  } catch (e) {
-    serverMessage.value = "No se pudo crear la cuenta. Inténtalo de nuevo.";
-  } finally {
-    loading.value = false;
-  }
+    loading.value = true
+    try {
+        await new Promise(r => setTimeout(r, 600))
+    } catch (e) {
+        errorMsg.value = e?.message ?? 'No se pudo crear la cuenta'
+    } finally {
+        loading.value = false
+    }
 }
 
-function openTerms() {
-  alert("Más adelante esto abrirá la vista de Términos y Condiciones 🙂");
-}
-function openPrivacy() {
-  alert("Más adelante esto abrirá la vista de Política de Privacidad 🙂");
+function onSocial(provider) {
+    errorMsg.value = `Registro con ${provider} aún no está conectado.`
 }
 </script>
 
 <style scoped>
-/* header bits */
-.actions { display:flex; gap:8px; align-items:center; }
-.brand { display:flex; align-items:center; gap:10px; }
-.brand__logo { color: var(--primary); width: 26px; height: 26px; display:grid; place-items:center; }
-.brand__name { font-size: 18px; font-weight: 900; letter-spacing: -0.02em; }
-.iconbtn--small { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: rgba(148,163,184,.12); }
-
-/* layout */
-.main { padding: 18px 0 52px; }
-.breadcrumbs {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  color: var(--muted);
-  padding: 10px 0 18px;
-}
-.breadcrumbs__link { color: var(--muted); font-weight: 800; }
-.breadcrumbs__link:hover { color: var(--primary); }
-.breadcrumbs__sep { color: var(--muted); }
-.breadcrumbs__current { color: var(--text); font-weight: 950; }
-
-.authWrap {
-  display: grid;
-  gap: 18px;
-  align-items: start;
-}
-@media (min-width: 1024px) {
-  .authWrap { grid-template-columns: 1fr 0.9fr; gap: 22px; }
+.register-bg {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 24px 0;
 }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px;
-}
-@media (min-width: 640px) {
-  .card { padding: 22px; }
+.register-row {
+    width: 100%;
 }
 
-.cardTop { margin-bottom: 14px; }
-.title {
-  margin: 0;
-  font-size: clamp(26px, 3vw, 40px);
-  font-weight: 950;
-  letter-spacing: -0.03em;
-}
-.subtitle { margin: 10px 0 0; color: var(--muted); line-height: 1.6; }
-
-.form { display: grid; gap: 14px; }
-.grid2 { display: grid; gap: 14px; }
-@media (min-width: 640px) {
-  .grid2 { grid-template-columns: 1fr 1fr; }
+.register-card {
+    overflow: hidden;
 }
 
-.field { display: grid; gap: 8px; }
-.label { font-weight: 900; }
-.input {
-  height: 46px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  padding: 0 12px;
-  outline: none;
-}
-.input:focus { border-color: rgba(19,127,236,.55); box-shadow: 0 0 0 4px rgba(19,127,236,.12); }
-
-.passwordRow {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: center;
+.left-panel {
+    width: 100%;
+    padding: 42px 36px;
+    background: linear-gradient(135deg, rgba(19, 127, 236, 0.10), rgba(19, 127, 236, 0.02));
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
 
-.hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
 }
 
-.error {
-  margin: 0;
-  color: #ef4444;
-  font-weight: 800;
-  font-size: 13px;
+.brand-text {
+    font-size: 18px;
 }
 
-.row { display:flex; align-items:flex-start; gap: 10px; flex-wrap: wrap; }
-
-.checkbox {
-  display:flex;
-  align-items:flex-start;
-  gap: 10px;
-  color: var(--muted);
-  font-weight: 800;
-  line-height: 1.5;
-}
-.checkbox input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--primary); }
-
-.linkBtn {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  color: var(--primary);
-  font-weight: 900;
-  padding: 0 2px;
-}
-.linkBtn:hover { text-decoration: underline; }
-
-.btn-primary {
-  height: 48px;
-  border: 0;
-  padding: 0 16px;
-  border-radius: 12px;
-  background: var(--primary);
-  color: #fff;
-  font-weight: 950;
-  cursor: pointer;
-  display: inline-flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-}
-.btn-primary:hover { filter: brightness(.95); }
-.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-
-.w100 { width: 100%; }
-
-.serverMsg {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(19,127,236,.35);
-  background: rgba(19,127,236,.10);
-  color: var(--text);
-  font-weight: 900;
+.headline {
+    margin-top: 6px;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.15;
 }
 
-.divider { height: 1px; background: var(--border); margin-top: 4px; }
-
-.bottomText { margin: 0; color: var(--muted); font-weight: 800; }
-.link { color: var(--primary); font-weight: 950; }
-.link:hover { text-decoration: underline; }
-
-/* side */
-.sideCard {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px;
-}
-.sideTitle { margin: 0; font-size: 18px; font-weight: 950; }
-.list { margin: 12px 0 0; padding-left: 18px; color: var(--muted); line-height: 1.8; font-weight: 800; }
-
-.callout {
-  margin-top: 14px;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(19,127,236,.25);
-  background: rgba(19,127,236,.08);
-  display:flex;
-  gap: 10px;
-  align-items:center;
-  color: var(--text);
-  font-weight: 900;
+.subhead {
+    color: rgba(0, 0, 0, .65);
+    line-height: 1.55;
+    max-width: 420px;
 }
 
-.mini {
-  margin-top: 14px;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: rgba(148,163,184,.12);
+.perks {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
-.mini__title { font-weight: 950; }
-.mini__text { margin-top: 6px; color: var(--muted); font-weight: 800; line-height: 1.5; }
 
-.material-symbols-outlined {
-  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+.perk {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(0, 0, 0, .75);
+    font-weight: 600;
+}
+
+.promo {
+    margin-top: auto;
+    padding: 14px 14px;
+    border: 1px solid rgba(0, 0, 0, .08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .65);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.promo-badge {
+    font-size: 12px;
+    font-weight: 800;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(19, 127, 236, 0.12);
+}
+
+.promo-text {
+    color: rgba(0, 0, 0, .75);
+}
+
+.right-panel {
+    padding: 42px 36px;
+}
+
+.link {
+    text-decoration: none;
+    color: rgb(19, 127, 236);
+    font-weight: 700;
+}
+
+.link:hover {
+    text-decoration: underline;
+}
+
+.social-btn {
+    justify-content: center;
+    position: relative;
+}
+
+.social-logo {
+    position: absolute;
+    left: 16px;
+    width: 22px;
+    height: 22px;
 }
 </style>

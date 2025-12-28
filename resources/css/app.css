@@ -11,6 +11,8 @@
   --radius-lg: 16px;
 }
 
+html, body, #app { height: 100%; }
+
 html.dark{
   --bg: var(--bg-dark);
   --text:#ffffff;
