@@ -144,6 +144,11 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'       // <--- Importar Router
+import { useAuthStore } from '../stores/auth' // <--- Importar Store
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const form = ref(null)
 
@@ -159,6 +164,7 @@ const showConfirm = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
 
+// Reglas de validación
 const nameRules = [
     v => !!v || 'El nombre es obligatorio',
     v => (v?.trim()?.length ?? 0) >= 2 || 'Mínimo 2 caracteres',
@@ -192,9 +198,26 @@ async function onSubmit() {
 
     loading.value = true
     try {
-        await new Promise(r => setTimeout(r, 600))
+        // --- LLAMADA REAL AL BACKEND ---
+        await authStore.register({
+            name: name.value,
+            email: email.value,
+            password: password.value,
+            password_confirmation: confirmPassword.value // Laravel exige este campo exacto
+        })
+
+        // Si funciona, redirigir al Home
+        router.push('/')
+
     } catch (e) {
-        errorMsg.value = e?.message ?? 'No se pudo crear la cuenta'
+        // Manejo de errores de validación de Laravel (ej: email duplicado)
+        if (e.response && e.response.status === 422) {
+            const errors = e.response.data.errors
+            // Mostramos el primer error que encontremos
+            errorMsg.value = Object.values(errors).flat()[0] || 'Datos inválidos'
+        } else {
+            errorMsg.value = 'Error de conexión. Inténtalo de nuevo.'
+        }
     } finally {
         loading.value = false
     }

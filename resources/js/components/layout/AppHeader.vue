@@ -1,127 +1,76 @@
 <template>
-    <v-app-bar color="white" :elevation="0" height="72" class="appbar">
-        <v-navigation-drawer v-model="drawer" temporary>
-            <v-list nav>
-                <v-list-item title="Tienda" to="/shop" @click="drawer = false" />
-                <v-list-item title="Novedades" to="/novedades" @click="drawer = false" />
-                <v-list-item title="Sobre nosotros" to="/sobre-nosotros" @click="drawer = false" />
+    <v-app-bar flat class="border-b" color="white" density="comfortable">
+        <v-container class="d-flex align-center py-0">
+            <router-link to="/" class="d-flex align-center text-decoration-none mr-4">
+                <v-icon icon="mdi-feather" color="primary" size="large" class="mr-2" />
+                <span class="text-h6 font-weight-bold text-black">TiendaModa</span>
+            </router-link>
 
-                <v-divider class="my-2" />
+            <div class="d-none d-md-flex ml-4 gap-4">
+                <v-btn to="/" variant="text">Inicio</v-btn>
+                <v-btn to="/shop" variant="text">Tienda</v-btn>
+                <v-btn to="/novedades" variant="text">Novedades</v-btn>
+            </div>
 
-                <v-list-item title="Iniciar sesión" to="/login" @click="drawer = false" />
-                <v-list-item title="Registrarse" to="/register" @click="drawer = false" />
-            </v-list>
-        </v-navigation-drawer>
+            <v-spacer />
 
-        <v-container fluid class="px-8">
-            <v-row align="center" no-gutters>
-                <v-btn icon variant="text" class="d-sm-none mr-2" aria-label="Abrir menú" @click="drawer = true">
-                    <v-icon icon="mdi-menu" />
+            <v-text-field
+                density="compact"
+                variant="outlined"
+                label="Buscar productos..."
+                append-inner-icon="mdi-magnify"
+                single-line
+                hide-details
+                class="d-none d-sm-flex mr-4"
+                style="max-width: 300px"
+            />
+
+            <div class="d-flex align-center">
+                <v-btn icon to="/cart" class="mr-2">
+                    <v-badge content="0" color="error" floating>
+                        <v-icon>mdi-cart-outline</v-icon>
+                    </v-badge>
                 </v-btn>
 
-                <v-col cols="auto">
-                    <RouterLink to="/" class="brand">
-                        <v-icon icon="mdi-feather" size="22" class="brand-icon" />
-                        <span class="brand-text">TiendaModa</span>
-                    </RouterLink>
-                </v-col>
+                <div v-if="!auth.user" class="d-flex align-center">
+                    <v-btn to="/login" variant="text" class="mr-1">Ingresar</v-btn>
+                    <v-btn to="/register" color="primary" variant="flat">Registro</v-btn>
+                </div>
 
-                <v-col class="d-none d-sm-flex justify-center">
-                    <nav class="nav">
-                        <v-btn class="nav-btn" variant="text" to="/shop">Tienda</v-btn>
-                        <v-btn class="nav-btn" variant="text" to="/novedades">Novedades</v-btn>
-                        <v-btn class="nav-btn" variant="text" to="/sobre-nosotros">Sobre nosotros</v-btn>
-                    </nav>
-                </v-col>
-
-                <v-col cols="auto" class="d-flex align-center ga-2 ml-auto">
-                    <v-btn variant="outlined" rounded="lg" class="text-none d-none d-sm-inline-flex" to="/login">
-                        Iniciar sesión
-                    </v-btn>
-
-                    <v-btn color="primary" variant="flat" rounded="lg" class="text-none d-none d-sm-inline-flex"
-                        to="/register">
-                        Registrarse
-                    </v-btn>
-
-                    <v-badge :content="cart.totalItems" :model-value="cart.totalItems > 0" color="primary" offset-x="6"
-                        offset-y="6">
-                        <v-btn icon variant="text" aria-label="Carrito" class="cart-btn" @click="cartOpen = true">
-                            <v-icon icon="mdi-cart-outline" />
+                <v-menu v-else location="bottom end">
+                    <template v-slot:activator="{ props }">
+                        <v-btn v-bind="props" variant="text" class="text-none">
+                            <v-avatar color="primary" size="32" class="mr-2">
+                                <span class="text-white text-caption">
+                                    {{ auth.user.name.charAt(0).toUpperCase() }}
+                                </span>
+                            </v-avatar>
+                            {{ auth.user.name }}
+                            <v-icon icon="mdi-chevron-down" size="small" class="ml-1" />
                         </v-btn>
-                    </v-badge>
+                    </template>
 
-                    <v-btn icon variant="text" class="d-sm-none" to="/login" aria-label="Cuenta">
-                        <v-icon icon="mdi-account-circle-outline" />
-                    </v-btn>
-                </v-col>
-            </v-row>
+                    <v-list elevation="3" rounded="lg" class="mt-2">
+                        <v-list-item to="/profile" prepend-icon="mdi-account-outline" title="Mi Perfil" />
+                        <v-list-item to="/orders" prepend-icon="mdi-package-variant-closed" title="Mis Pedidos" />
+                        <v-divider class="my-2" />
+                        <v-list-item @click="handleLogout" prepend-icon="mdi-logout" title="Cerrar Sesión" color="error" />
+                    </v-list>
+                </v-menu>
+            </div>
         </v-container>
     </v-app-bar>
-
-    <CartDrawer v-model="cartOpen" />
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useCartStore } from '../../stores/cart'
-import { useUiStore } from '../../stores/ui'
-import CartDrawer from '../CartDrawer.vue'
+import { useAuthStore } from '../../stores/auth'
+import { useRouter } from 'vue-router'
 
-const drawer = ref(false)
+const auth = useAuthStore()
+const router = useRouter()
 
-const cart = useCartStore()
-const ui = useUiStore()
-
-// v-model para el drawer, pero guardado en Pinia (así lo puede leer el botón flotante)
-const cartOpen = computed({
-    get: () => ui.cartOpen,
-    set: (v) => (ui.cartOpen = v),
-})
+async function handleLogout() {
+    await auth.logout()
+    router.push('/login')
+}
 </script>
-
-<style scoped>
-.appbar {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    color: inherit;
-}
-
-.brand-text {
-    font-weight: 800;
-    font-size: 18px;
-    letter-spacing: -0.2px;
-}
-
-.brand-icon {
-    opacity: 0.9;
-}
-
-.nav {
-    display: flex;
-    gap: 6px;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-}
-
-.nav-btn {
-    text-transform: none;
-    font-weight: 600;
-    letter-spacing: 0;
-    border-radius: 12px;
-}
-
-.nav-btn:hover {
-    background: rgba(19, 127, 236, 0.08);
-}
-
-.cart-btn {
-    position: relative;
-}
-</style>

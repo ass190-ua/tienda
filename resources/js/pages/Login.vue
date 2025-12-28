@@ -120,9 +120,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth' // <--- Importamos el store
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const form = ref(null)
-
 const email = ref('')
 const password = ref('')
 const remember = ref(true)
@@ -143,25 +147,33 @@ const passwordRules = [
 
 async function onSubmit() {
     errorMsg.value = ''
-
     const res = await form.value?.validate()
     if (!res?.valid) return
 
     loading.value = true
     try {
-        // UI-only (aquí luego conectaréis al backend)
-        await new Promise(r => setTimeout(r, 600))
-        // Simulamos error si queréis comprobar el alert:
-        // throw new Error('Credenciales incorrectas')
+        // LLAMADA REAL AL BACKEND
+        await authStore.login({
+            email: email.value,
+            password: password.value,
+            remember: remember.value
+        })
+
+        // Si todo va bien, redirigir a la tienda o al home
+        router.push('/')
     } catch (e) {
-        errorMsg.value = e?.message ?? 'No se pudo iniciar sesión'
+        // Capturamos el error que devuelve Laravel
+        if (e.response && e.response.status === 422) {
+            errorMsg.value = e.response.data.errors.email?.[0] || 'Datos inválidos'
+        } else {
+            errorMsg.value = 'Ocurrió un error al iniciar sesión'
+        }
     } finally {
         loading.value = false
     }
 }
 
 function onSocial(provider) {
-    // Placeholder UI
     errorMsg.value = `Login con ${provider} aún no está conectado.`
 }
 </script>

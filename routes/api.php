@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,6 +15,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+// Rutas Púlicas (No necesitas estar logueado)
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+// Rutas Protegidas (Necesitas Token válido)
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Cerrar sesión
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Obtener datos del usuario actual
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
 });

@@ -1,25 +1,27 @@
 <template>
-    <v-app class="app-shell">
-        <AppHeader />
+  <v-app>
+    <AppHeader />
 
-        <v-main class="app-main">
-            <div class="page-wrap">
-                <router-view v-slot="{ Component }">
-                    <component :is="Component" class="page" />
-                </router-view>
-            </div>
-        </v-main>
+    <v-main>
+      <router-view />
+    </v-main>
 
-        <AppFooter />
-
-        <ScrollToTop />
-    </v-app>
+    <AppFooter />
+  </v-app>
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
+import { useAuthStore } from './stores/auth'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppFooter from './components/layout/AppFooter.vue'
-import ScrollToTop from './components/ScrollToTop.vue';
+
+const authStore = useAuthStore()
+
+// Al arrancar la App, intentamos recuperar al usuario si tiene cookie válida
+onMounted(async () => {
+    await authStore.fetchUser()
+})
 </script>
 
 <style>
