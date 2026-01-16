@@ -82,6 +82,34 @@ export const useWishlistStore = defineStore('wishlist', {
             await axios.delete(`/api/wishlist/${productId}`)
             await this.fetchWishlist(true)
         },
+        /**
++         * Toggle a nivel "prenda" (grupo).
++         * - Si cualquier variante del grupo está en wishlist -> elimina esa variante.
++         * - Si ninguna está -> añade una variante representativa (representativeId o primer productId del grupo).
++         *
++         * @param {number[]} productIds - ids de variantes del grupo
++         * @param {number|null} representativeId - id representativo para añadir (opcional)
++         */
+        async toggleGroup(productIds = [], representativeId = null) {
+            const ids = Array.isArray(productIds)
+                ? productIds.map(Number).filter(n => Number.isFinite(n))
+                : []
+
+            const rep = Number(representativeId)
+            const representative = Number.isFinite(rep) ? rep : (ids[0] ?? null)
+
+            // Si ya hay alguna variante guardada, quitamos la primera que encontremos.
+            const existingId = this.findWishlistedProductId(ids)
+            if (existingId != null) {
+                await this.remove(existingId)
+                return { action: 'removed', product_id: existingId }
+            }
+
+            // Si no hay ninguna, añadimos una representativa.
+            if (representative == null) return { action: 'noop', product_id: null }
+            await this.add(representative)
+            return { action: 'added', product_id: representative }
+        },
 
         async clear() {
             // como items son Products -> id es el product_id correcto

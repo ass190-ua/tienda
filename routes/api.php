@@ -38,6 +38,7 @@ Route::get('/products/{id}', [ProductController::class, 'show'])->whereNumber('i
 Route::get('/products/top-purchased', [ProductController::class, 'topPurchased']);
 Route::get('/products/top-wishlisted', [ProductController::class, 'topWishlisted']);
 Route::get('/products/grouped', [ProductController::class, 'grouped']);
+Route::get('/products/novedades-grouped', [ProductController::class, 'novedadesGroupedProducts']);
 Route::post('/products/grouped-by-ids', [ProductController::class, 'groupedByIds']);
 Route::post('/products/variants-by-ids', [ProductController::class, 'variantsByIds']);
 Route::post('/products/resolve-variant', [ProductController::class, 'resolveVariant']);
@@ -49,6 +50,12 @@ Route::get('/products/{product}/reviews', [ReviewController::class, 'index'])
 // Autenticación
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::middleware(['web'])->group(function () {
+    Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle']);
+    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
+});
 
 // Contacto
 Route::post('/contact', [ContactController::class, 'send']);
@@ -199,10 +206,22 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // Stats Dashboard
     Route::get('/stats', function () {
+        // Definimos qué estados suman DINERO real
+        $validStatuses = ['paid', 'shipped', 'delivered'];
+
+        // Calculamos los ingresos (Solo de pedidos válidos/cobrados)
+        // Usamos ->get() y ->sum('total') para usar el atributo calculado en el Modelo
+        $revenue = \App\Models\Order::whereIn('status', $validStatuses)
+                    ->get()
+                    ->sum('total');
+
         return response()->json([
             'users_count' => \App\Models\User::count(),
+
+            //Aquí volvemos a contar TODOS los pedidos para ver el volumen total de actividad
             'orders_count' => \App\Models\Order::count(),
-            'revenue'     => \App\Models\Order::sum('subtotal'), // Ajustar si usas total_amount
+
+            'revenue'     => $revenue, // El dinero SÍ se mantiene filtrado (solo lo real)
             'products_count' => \App\Models\Product::count(),
             'reviews_count' => \App\Models\Review::count(),
         ]);

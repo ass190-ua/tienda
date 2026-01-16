@@ -18,6 +18,7 @@ import { useAuthStore } from './stores/auth'
 import { useRoute } from 'vue-router';
 import { useCartStore } from './stores/cart'
 import { useWishlistStore } from './stores/wishlist'
+import axios from 'axios'
 import AppHeader from './components/layout/AppHeader.vue'
 import AppFooter from './components/layout/AppFooter.vue'
 import ScrollToTop from './components/ScrollToTop.vue'

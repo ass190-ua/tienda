@@ -51,7 +51,7 @@ class AdminOrderController extends Controller
 
     public function index(Request $request)
     {
-        $query = Order::with(['user', 'address']);
+        $query = Order::with(['user', 'address', 'payments']);
 
         // Aplicamos los filtros
         $query = $this->applyFilters($query, $request);
@@ -62,12 +62,10 @@ class AdminOrderController extends Controller
         return response()->json($orders);
     }
 
-    // ¡NUEVO! Función para Exportar a CSV
     public function export(Request $request)
     {
-        $query = Order::with(['user', 'address']);
+        $query = Order::with(['user', 'address', 'payments']);
 
-        // Aplicamos los MISMOS filtros que en la lista (para exportar lo que ves)
         $query = $this->applyFilters($query, $request);
 
         $orders = $query->orderBy('created_at', 'desc')->get();
@@ -84,10 +82,10 @@ class AdminOrderController extends Controller
 
         $callback = function() use ($orders) {
             $file = fopen('php://output', 'w');
-
-            // Encabezados del CSV (UTF-8 BOM para que Excel lea bien los acentos)
             fputs($file, $bom =( chr(0xEF) . chr(0xBB) . chr(0xBF) ));
-            fputcsv($file, ['ID', 'Cliente', 'Email', 'Fecha', 'Estado', 'Total', 'Dirección']);
+
+            // Ajustamos encabezados
+            fputcsv($file, ['ID', 'Cliente', 'Email', 'Fecha', 'Estado', 'Subtotal', 'Total Pagado', 'Dirección']);
 
             foreach ($orders as $order) {
                 fputcsv($file, [
@@ -96,7 +94,8 @@ class AdminOrderController extends Controller
                     $order->user ? $order->user->email : '',
                     $order->created_at->format('d/m/Y H:i'),
                     $order->status,
-                    $order->total_amount ?? $order->subtotal, // Ajuste según tu modelo
+                    $order->subtotal, // El subtotal de productos
+                    $order->total,    // [MODIFICADO] Usamos el nuevo atributo mágico que incluye envío/descuentos
                     $order->address ? ($order->address->address_line_1 . ' ' . $order->address->city) : 'S/D'
                 ]);
             }
@@ -109,7 +108,9 @@ class AdminOrderController extends Controller
 
     public function show($id)
     {
-        $order = Order::with(['user', 'address', 'lines.product.images'])->findOrFail($id);
+        $order = Order::with(['user', 'address', 'lines.product.images', 'payments', 'coupon'])
+                      ->findOrFail($id);
+
         return response()->json($order);
     }
 

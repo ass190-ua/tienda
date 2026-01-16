@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { useCartStore } from './cart'
-import { useWishlistStore } from './wishlist'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -14,24 +13,29 @@ export const useAuthStore = defineStore('auth', {
     },
 
     actions: {
-        // Obtener el usuario actual
+        // Al arrancar la app, solo pedimos el usuario.
+        // Axios enviará la cookie automáticamente.
         async fetchUser() {
             try {
+                console.log('[AUTH] Verificando sesión...');
                 const { data, status } = await axios.get('/api/user')
 
                 if (status === 204 || !data) {
                     this.user = null
                 } else {
                     this.user = data
+                    console.log('[AUTH] Usuario detectado:', data.name)
                 }
 
+                // Cargar carrito del usuario
                 const cart = useCartStore()
-                cart.setOwner(this.user?.id ?? null)
-
-                if (cart.userId) {
+                if (this.user) {
+                    cart.setOwner(this.user.id)
                     try { await cart.pullFromBackend?.() } catch { }
                 }
-            } catch {
+
+            } catch (error) {
+                // Si da 401 es que no hay sesión, no pasa nada
                 this.user = null
                 const cart = useCartStore()
                 cart.setOwner(null)
@@ -40,44 +44,24 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async updateProfile(payload) {
-            // payload: { name }
-            await axios.get('/sanctum/csrf-cookie')
-            const { data } = await axios.put('/api/user', payload)
-            this.user = data
-            return data
-        },
-
-
         async login(credentials) {
-            // 1. Pedir cookie CSRF (seguridad obligatoria de Laravel)
             await axios.get('/sanctum/csrf-cookie')
-            // 2. Hacer login
             await axios.post('/api/login', credentials)
-            // 3. Obtener datos del usuario
             await this.fetchUser()
-
-            console.log('[AUTH] Usuario logueado:', this.user)
         },
 
         async register(userData) {
             await axios.get('/sanctum/csrf-cookie')
             await axios.post('/api/register', userData)
             await this.fetchUser()
-
-            console.log('[AUTH] Usuario registrado y logueado:', this.user)
         },
 
         async logout() {
-            await axios.get('/sanctum/csrf-cookie')
             await axios.post('/api/logout')
-
-            await this.fetchUser()
-
+            this.user = null
             const cart = useCartStore()
             cart.setOwner(null)
-
-            console.log('[AUTH] Cerrandp sesión...')
+            window.location.href = '/login' // Recarga limpia para borrar cookies
         }
     }
 })

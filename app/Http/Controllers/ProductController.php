@@ -340,6 +340,85 @@ class ProductController extends Controller
         );
     }
 
+    public function novedadesGroupedProducts(Request $request)
+    {
+        $validated = $request->validate([
+            'category_id' => ['required', 'integer'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        $limit = $validated['limit'] ?? 8;
+
+        // Para asegurar variedad, sacamos más candidatos y luego intercalamos por type_id
+        $candidateLimit = min($limit * 5, 200);
+
+        // 1) Sacamos "prendas" agrupadas: mismo name + category + type
+        $groups = Product::query()
+            ->where('category_id', (int) $validated['category_id'])
+            ->select('name', 'category_id', 'type_id')
+            ->selectRaw('MIN(id) as representative_id, MIN(price) as price, MAX(created_at) as newest_created_at')
+            ->groupBy('name', 'category_id', 'type_id')
+            ->orderByDesc('newest_created_at')
+            ->limit($candidateLimit) // ✅ antes era $limit
+            ->get();
+
+        // Intercalamos los grupos por type_id para mayor variedad
+        $byType = $groups->groupBy('type_id')->map(fn($items) => $items->values());
+        $interleaved = collect();
+
+        while ($interleaved->count() < $limit && $byType->isNotEmpty()) {
+            foreach ($byType->keys() as $typeId) {
+                if ($interleaved->count() >= $limit) break;
+
+                $bucket = $byType->get($typeId);
+                if ($bucket && $bucket->isNotEmpty()) {
+                    $interleaved->push($bucket->shift());
+                    $byType->put($typeId, $bucket);
+                }
+
+                if (!$byType->has($typeId) || $byType->get($typeId)->isEmpty()) {
+                    $byType->forget($typeId);
+                }
+            }
+        }
+
+        $groups = $interleaved;
+
+        // 2) Enriquecemos cada grupo con sus variantes (ids, colores, tallas) y la imagen del representative
+        $result = $groups->map(function ($g) {
+            $variants = Product::query()
+                ->where('name', $g->name)
+                ->where('category_id', $g->category_id)
+                ->where('type_id', $g->type_id)
+                ->with(['images'])
+                ->get();
+
+            $representative = $variants->firstWhere('id', $g->representative_id) ?? $variants->first();
+
+            return [
+                // Para mantener compatibilidad con el front: id = representative
+                'id' => $representative?->id ?? $g->representative_id,
+                'representative_id' => $representative?->id ?? $g->representative_id,
+
+                'name' => $g->name,
+                'category_id' => $g->category_id,
+                'type_id' => $g->type_id,
+                'price' => (float) $g->price,
+
+                // Variantes agrupadas
+                'product_ids' => $variants->pluck('id')->values(),
+                'colors' => $variants->pluck('color')->filter()->unique()->values(),
+                'sizes' => $variants->pluck('size')->filter()->unique()->values(),
+
+                // Imágenes: usamos las del representative
+                'images' => $representative?->images ?? [],
+            ];
+        });
+
+        return response()->json($result);
+    }
+
+
     /**
      * GET /api/products/filters
      * Devuelve filtros *válidos* según category/types actuales
