@@ -352,11 +352,12 @@ const exportOrders = () => {
 // Helper para recuperar imagen
 const getProductImage = (product) => {
     if (!product || !product.images || product.images.length === 0) {
-        return '/placeholder-image.jpg'; // Imagen por defecto si no hay
+        return '/placeholder-image.jpg';
     }
     const path = product.images[0].path;
-    // Si la ruta ya es completa (http) la usamos, si no, le pegamos /storage/
-    return path.startsWith('http') ? path : `/storage/${path}`;
+
+    // Quitamos la parte de `/storage/${path}`
+    return path.startsWith('http') ? path : (path.startsWith('/') ? path : `/${path}`);
 };
 
 const getStatusColor = (status) => {

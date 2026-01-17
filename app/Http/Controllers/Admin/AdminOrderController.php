@@ -64,46 +64,25 @@ class AdminOrderController extends Controller
 
     public function export(Request $request)
     {
-        $query = Order::with(['user', 'address', 'payments']);
+        // 1. Cargar pedidos con TODAS las relaciones necesarias
+        // ¡Importante! Cargar lines.product.images para poder pintar las fotos
+        $query = Order::with(['user', 'address', 'lines.product.images']);
 
+        // 2. Aplicar los mismos filtros que en el listado
         $query = $this->applyFilters($query, $request);
 
         $orders = $query->orderBy('created_at', 'desc')->get();
 
-        $filename = "pedidos-" . date('Y-m-d') . ".csv";
+        // 3. Renderizar la vista HTML que creamos
+        $view = view('admin.exports.orders', compact('orders'))->render();
 
-        $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$filename",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        ];
-
-        $callback = function() use ($orders) {
-            $file = fopen('php://output', 'w');
-            fputs($file, $bom =( chr(0xEF) . chr(0xBB) . chr(0xBF) ));
-
-            // Ajustamos encabezados
-            fputcsv($file, ['ID', 'Cliente', 'Email', 'Fecha', 'Estado', 'Subtotal', 'Total Pagado', 'Dirección']);
-
-            foreach ($orders as $order) {
-                fputcsv($file, [
-                    $order->id,
-                    $order->user ? $order->user->name : 'Invitado',
-                    $order->user ? $order->user->email : '',
-                    $order->created_at->format('d/m/Y H:i'),
-                    $order->status,
-                    $order->subtotal, // El subtotal de productos
-                    $order->total,    // [MODIFICADO] Usamos el nuevo atributo mágico que incluye envío/descuentos
-                    $order->address ? ($order->address->address_line_1 . ' ' . $order->address->city) : 'S/D'
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        // 4. Retornar la respuesta con cabeceras de Excel
+        // Esto engaña al navegador para que lo descargue como .xls
+        return response($view)
+            ->header('Content-Type', 'application/vnd.ms-excel; charset=utf-8')
+            ->header('Content-Disposition', 'attachment; filename="Listado-Pedidos-' . date('Y-m-d') . '.xls"')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     public function show($id)

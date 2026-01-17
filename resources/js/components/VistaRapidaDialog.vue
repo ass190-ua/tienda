@@ -5,7 +5,6 @@
             <v-card-title class="d-flex align-center justify-space-between">
                 <div class="d-flex flex-column">
                     <div class="text-subtitle-1 font-weight-bold">{{ product?.name }}</div>
-                    <div class="text-body-2 text-medium-emphasis">{{ productBrand }}</div>
                 </div>
 
                 <v-btn icon variant="text" @click="emit('update:modelValue', false)" aria-label="Cerrar">
@@ -334,12 +333,6 @@ const maxQty = computed(() => {
     const a = Number(selectedVariant.value?.available ?? 0)
     return Number.isFinite(a) ? a : 0
 })
-
-const isOutOfStock = computed(() => {
-    return variants.value.length > 0 && variants.value.every(v => Number(v.available ?? 0) <= 0)
-})
-
-const productBrand = computed(() => props.product?.brand ?? 'TiendaModa')
 
 const priceText = computed(() => {
     const n = Number(props.product?.price ?? 0)

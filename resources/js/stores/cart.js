@@ -1,36 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-function mergeItemLists(baseItems, incomingItems) {
-    const map = new Map()
-
-    for (const it of (baseItems ?? [])) {
-        if (!it?.key) continue
-        map.set(it.key, { ...it, qty: Number(it.qty ?? 1) })
-    }
-
-    for (const it of (incomingItems ?? [])) {
-        const k = it?.key
-        if (!k) continue
-
-        if (map.has(k)) {
-            const existing = map.get(k)
-            existing.qty = Number(existing.qty ?? 1) + Number(it.qty ?? 1)
-
-            existing.product = existing.product ?? it.product
-            existing.size = existing.size ?? it.size
-            existing.color = existing.color ?? it.color
-
-            existing.size_id = existing.size_id ?? it.size_id
-            existing.color_id = existing.color_id ?? it.color_id
-        } else {
-            map.set(k, { ...it, qty: Number(it.qty ?? 1) })
-        }
-    }
-
-    return Array.from(map.values())
-}
-
 function legacyLineKey(productId, size, color) {
     return `${productId}__${size ?? ''}__${color ?? ''}`
 }
@@ -136,6 +106,8 @@ export const useCartStore = defineStore('cart', {
             syncing: false,
             isPulling: false,
             pulledOnce: false,
+
+            availabilityByProductId: {}, // { [productId]: { available, ts } }
         }
     },
 
@@ -151,6 +123,45 @@ export const useCartStore = defineStore('cart', {
             }, 0),
 
         isEmpty: (s) => s.items.length === 0,
+
+        availabilityOf: (s) => (productId) => {
+            const pid = Number(productId)
+            if (!pid) return null
+            return s.availabilityByProductId[pid] ?? null
+        },
+
+        lineAvailabilityStatus: (s) => (line) => {
+            const pid = Number(line?.product?.id ?? line?.product_id ?? null)
+            const qty = Number(line?.qty ?? 0)
+
+            if (!pid) return { ok: true, available: null, qty }
+
+            const entry = s.availabilityByProductId[pid]
+            if (!entry) return { ok: true, available: null, qty }
+
+            const available = Number(entry.available ?? 0)
+
+            if (available <= 0) return { ok: false, state: 'OUT', available, qty }
+            if (qty > available) return { ok: false, state: 'LOW', available, qty }
+
+            return { ok: true, state: 'OK', available, qty }
+        },
+
+        hasAvailabilityIssues: (s) => {
+            for (const it of (s.items ?? [])) {
+                const pid = Number(it?.product?.id ?? it?.product_id ?? null)
+                const qty = Number(it?.qty ?? 0)
+                if (!pid) continue
+
+                const entry = s.availabilityByProductId[pid]
+                if (!entry) continue
+
+                const available = Number(entry.available ?? 0)
+                if (available <= 0) return true
+                if (qty > available) return true
+            }
+            return false
+        },
     },
 
     actions: {
@@ -304,6 +315,10 @@ export const useCartStore = defineStore('cart', {
                 map.set(pid, (map.get(pid) ?? 0) + q)
             }
 
+            if (map.size === 0) {
+                return
+            }
+
             this.syncing = true
             try {
                 // dejarmos el backend EXACTO al local: vaciamos y re-seteamos
@@ -360,22 +375,30 @@ export const useCartStore = defineStore('cart', {
                 this.storageKey = storageKeyFor(this.userId)
                 this.pulledOnce = false
 
-                // Vaciamos guest local (ya no lo usaremos)
-                saveCart(guestKey, [])
-                this.items = []
-                this._persist()
+                // IMPORTANTE:
+                // - NO borres el guestKey todavía.
+                // - NO vacíes items todavía.
+                // Primero decidimos qué hacer según si hay guestItems reales.
 
-                // Subimos el carrito guest al backend como fuente de verdad
-                // (requiere que tengas syncToBackend implementado)
-                // Si no, lo hacemos item por item.
                 try {
-                    // si tu store tiene syncToBackend:
-                    this.items = guestItems
-                    await this.syncToBackend?.()
-                    await this.pullFromBackend?.()
-                } catch {
+                    const hasGuest = Array.isArray(guestItems) && guestItems.length > 0
+
+                    if (hasGuest) {
+                        // Migramos carrito invitado -> backend
+                        this.items = guestItems
+                        await this.syncToBackend()
+                        // Una vez migrado, limpiamos el guest local
+                        saveCart(guestKey, [])
+                    } else {
+                        // No hay carrito guest: solo cargamos el carrito real del backend
+                        this.items = []
+                        await this.pullFromBackend(true)
+                    }
+                } catch (e) {
+                    console.warn('[cart] setOwner merge error', e)
                     // fallback: al menos hidratamos desde backend
-                    this.pullFromBackend?.()
+                    this.items = []
+                    await this.pullFromBackend(true)
                 }
 
                 return
@@ -395,6 +418,36 @@ export const useCartStore = defineStore('cart', {
 
             // Invitado: seguimos usando localStorage
             this.items = loadCart(this.storageKey)
+        },
+
+        async refreshAvailabilityForCart() {
+            // productos únicos del carrito
+            const pids = Array.from(new Set(
+                (this.items ?? [])
+                    .map(it => Number(it?.product?.id ?? it?.product_id ?? null))
+                    .filter(Boolean)
+            ))
+
+            if (pids.length === 0) return
+
+            const now = Date.now()
+            const next = { ...this.availabilityByProductId }
+
+            // usamos tu fetchAvailabilityCached (ya existe arriba)
+            await Promise.all(pids.map(async (pid) => {
+                try {
+                    const a = await fetchAvailabilityCached(pid)
+                    next[pid] = { available: Number(a?.available ?? 0), ts: now }
+                } catch {
+                    // si falla, no lo rompemos; dejamos lo anterior
+                }
+            }))
+
+            this.availabilityByProductId = next
+        },
+
+        async setQty(productId, qty) {
+            await this._syncSetQty(productId, qty)
         },
 
         // =============================
@@ -485,7 +538,7 @@ export const useCartStore = defineStore('cart', {
             const { qty: clamped, availability } = await clampToAvailability(productId, desired)
 
             if (clamped === current) {
-                this._warnStock(productId, availability?.available ?? current)
+                this.clearStockWarning()
                 return
             }
 
@@ -520,6 +573,15 @@ export const useCartStore = defineStore('cart', {
         },
 
         async clear() {
+            console.log('[cart.clear] LLAMADO -> voy a borrar carrito')
+            console.log('[cart.clear] estado', {
+                isEmpty: this.isEmpty,
+                totalItems: this.totalItems,
+                syncing: this.syncing,
+                items: this.items,
+            })
+            console.trace('[cartStore] STACK TRACE')
+
             this.items = []
             this._persist()
             await this._syncClear()

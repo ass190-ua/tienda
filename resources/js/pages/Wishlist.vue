@@ -24,7 +24,7 @@
             </div>
 
             <div v-else>
-                <v-btn color="primary" rounded="lg" @click="router.push('/shop')">
+                <v-btn v-if="!loading" color="primary" rounded="lg" @click="router.push('/shop')">
                     Explorar tienda
                 </v-btn>
             </div>

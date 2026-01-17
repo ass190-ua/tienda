@@ -35,7 +35,10 @@
                     <div v-else key="items" :class="['items-wrap', { clearing: isClearing }]">
                         <TransitionGroup name="cart" tag="div" class="items-list">
                             <div v-for="it in items" :key="it.key" class="item-row">
-                                <v-card rounded="xl" elevation="0" class="item-card">
+                                <v-card rounded="xl" elevation="0" class="item-card" :class="{
+                                    'item-out': av(it).state === 'OUT',
+                                    'item-low': av(it).state === 'LOW',
+                                }">
                                     <div class="d-flex ga-3">
                                         <v-img :src="itemImage(it)" width="74" height="74" cover class="thumb" />
 
@@ -52,6 +55,19 @@
                                                 <span v-if="it.size">Talla: {{ it.size }}</span>
                                                 <span v-if="it.size && it.color"> · </span>
                                                 <span v-if="it.color">Color: {{ it.color }}</span>
+
+                                                <div class="mt-2">
+                                                    <v-chip v-if="!av(it).ok" size="x-small" variant="tonal"
+                                                        rounded="lg"
+                                                        :color="av(it).state === 'OUT' ? 'error' : 'warning'">
+                                                        <template v-if="av(it).state === 'OUT'">
+                                                            Agotado
+                                                        </template>
+                                                        <template v-else>
+                                                            Stock insuficiente
+                                                        </template>
+                                                    </v-chip>
+                                                </div>
                                             </div>
 
                                             <div class="d-flex align-center justify-space-between mt-3">
@@ -70,7 +86,7 @@
 
                                                     <v-btn icon variant="outlined" rounded="lg" size="small"
                                                         class="qty-btn" aria-label="Aumentar" @click="inc(it)"
-                                                        :disabled="cart.syncing">
+                                                        :disabled="cart.syncing || !canInc(it)">
                                                         <v-icon icon="mdi-plus" />
                                                     </v-btn>
 
@@ -154,7 +170,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useCartStore } from '../stores/cart'
@@ -183,18 +199,6 @@ const items = computed(() => cart.items)
 const totalItems = computed(() => cart.totalItems)
 
 const subtotal = computed(() => cart.subtotal)
-
-watch(
-    () => props.modelValue,
-    async (open) => {
-        if (open) {
-            try { await cart.pullFromBackend?.() } catch { }
-        } else {
-            confirmClear.value = false
-            isClearing.value = false
-        }
-    }
-)
 
 function money(n) {
     const v = Number(n || 0)
@@ -230,6 +234,26 @@ function itemImage(it) {
     )
 }
 
+function lineStatus(it) {
+    const pid = Number(it.product?.id ?? it.product_id ?? it.productId ?? 0)
+    const qty = Number(it.qty ?? it.quantity ?? 0)
+    return cart.lineAvailabilityStatus({ product_id: pid, qty })
+}
+
+function canInc(it) {
+    const st = lineStatus(it)
+    if (!st) return true
+
+    if (st.state === 'OUT') return false
+
+    const available = Number(st.available)
+    const qty = Number(it?.qty ?? 0)
+
+    if (!Number.isFinite(available)) return true
+
+    return qty < available
+}
+
 async function inc(it) {
     await cart.inc(it.key)
 }
@@ -260,6 +284,35 @@ async function clearAllConfirmed() {
     await new Promise((r) => setTimeout(r, 50))
     isClearing.value = false
 }
+
+function av(it) {
+    return cart.lineAvailabilityStatus(it)
+}
+
+watch(
+    () => props.modelValue,
+    async (open) => {
+        if (open) {
+            confirmClear.value = false
+            isClearing.value = false
+
+            try {
+                await cart.pullFromBackend?.(true)
+            } catch { }
+
+            try {
+                await cart.refreshAvailabilityForCart?.()
+            } catch { }
+        } else {
+            confirmClear.value = false
+            isClearing.value = false
+        }
+    }
+)
+
+watch(() => cart.items, async () => {
+    await cart.refreshAvailabilityForCart()
+}, { deep: true })
 </script>
 
 
@@ -328,6 +381,16 @@ async function clearAllConfirmed() {
     border-radius: 18px;
     padding: 12px;
     background: rgba(0, 0, 0, 0.012);
+}
+
+.item-out {
+    border: 1px solid rgba(244, 67, 54, 0.30) !important;
+    background: rgba(244, 67, 54, 0.04) !important;
+}
+
+.item-low {
+    border: 1px solid rgba(255, 152, 0, 0.30) !important;
+    background: rgba(255, 152, 0, 0.04) !important;
 }
 
 .thumb {

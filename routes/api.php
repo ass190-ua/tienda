@@ -2,6 +2,9 @@
 
 use Illuminate\Http\Request;
 use App\Models\Address;
+use App\Models\Cart;
+use App\Models\StockItem;
+use App\Models\Coupon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -113,7 +116,103 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // TPV - Inicio de pago
     Route::post('/checkout/start', function (Request $request) {
-        $amount = $request->input('amount', 49.99);
+
+        $user = $request->user();
+
+        // Opcional: el frontend puede mandar cupón aplicado, pero NO amount.
+        $data = $request->validate([
+            'coupon_code' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $couponCode = trim((string)($data['coupon_code'] ?? ''));
+
+        // Cargar carrito del usuario (BD)
+        $cart = Cart::query()
+            ->where('user_id', $user->id)
+            ->with('items') // relación definida en Cart.php
+            ->first();
+
+        if (!$cart || $cart->items->isEmpty()) {
+            return response()->json([
+                'message' => 'El carrito está vacío.',
+                'code' => 'CART_EMPTY',
+            ], 422);
+        }
+
+        // Agrupar cantidades por product_id
+        $grouped = $cart->items
+            ->groupBy('product_id')
+            ->map(fn($g, $pid) => [
+                'product_id' => (int)$pid,
+                'qty' => (int)$g->sum('quantity'),
+            ])
+            ->values();
+
+        // 1) Validación de stock (sin reservar: modelo mínimo)
+        $insufficient = [];
+        foreach ($grouped as $it) {
+            $pid = (int)$it['product_id'];
+            $qty = (int)$it['qty'];
+
+            $stockTotal = (int) StockItem::query()
+                ->where('product_id', $pid)
+                ->sum('quantity');
+
+            if ($qty > $stockTotal) {
+                $insufficient[] = [
+                    'product_id' => $pid,
+                    'requested' => $qty,
+                    'available' => $stockTotal,
+                ];
+            }
+        }
+
+        if (!empty($insufficient)) {
+            return response()->json([
+                'message' => 'No hay stock suficiente para iniciar el pago.',
+                'code' => 'OUT_OF_STOCK_BEFORE_TPV',
+                'items' => $insufficient,
+            ], 422);
+        }
+
+        // 2) Calcular subtotal desde BD (cart_items tiene line_total)
+        $subtotal = (float) $cart->items->sum('line_total');
+
+        // 3) Cupón (misma idea que en OrderController)
+        $couponDiscount = 0.0;
+        if ($couponCode !== '') {
+            $coupon = Coupon::query()
+                ->whereRaw('LOWER(code) = ?', [mb_strtolower($couponCode)])
+                ->first();
+
+            if ($coupon && $coupon->is_active) {
+                $now = now();
+
+                $okDates = (!$coupon->start_date || $now->gte($coupon->start_date))
+                    && (!$coupon->end_date || $now->lte($coupon->end_date));
+
+                $okMin = ($coupon->min_order_total === null)
+                    || ($subtotal >= (float)$coupon->min_order_total);
+
+                if ($okDates && $okMin) {
+                    if ($coupon->discount_type === 'percent') {
+                        $couponDiscount = $subtotal * ((float)$coupon->discount_value / 100.0);
+                    } elseif ($coupon->discount_type === 'fixed') {
+                        $couponDiscount = (float)$coupon->discount_value;
+                    }
+
+                    $couponDiscount = round(min($subtotal, $couponDiscount), 2);
+                }
+            }
+        }
+
+        $base = max(0, round($subtotal - $couponDiscount, 2));
+
+        // 4) Envío (igual que tu Checkout.vue)
+        $shippingCost = ($base >= 60) ? 0.0 : 4.99;
+        $total = round($base + $shippingCost, 2);
+
+        // 5) Llamar al TPV con total del servidor
         $callbackUrl = $request->getSchemeAndHttpHost() . '/api/checkout/callback';
         $tpvBase = rtrim(env('TPV_BASE_URL'), '/');
         $apiKey  = env('TPV_API_KEY');
@@ -122,7 +221,7 @@ Route::middleware(['web', 'auth'])->group(function () {
             'X-API-KEY' => $apiKey,
             'Accept' => 'application/json',
         ])->post($tpvBase . '/api/v1/payments/init', [
-            'amount' => $amount,
+            'amount' => $total,
             'callbackUrl' => $callbackUrl,
         ]);
 
@@ -134,7 +233,16 @@ Route::middleware(['web', 'auth'])->group(function () {
             ], 500);
         }
 
-        return response()->json($resp->json(), 200);
+        // Importante: devolvemos también amount y breakdown para que el frontend guarde lo correcto
+        return response()->json(array_merge($resp->json() ?? [], [
+            'amount' => $total,
+            'breakdown' => [
+                'subtotal' => round($subtotal, 2),
+                'coupon_discount' => $couponDiscount,
+                'shipping' => $shippingCost,
+                'base' => $base,
+            ],
+        ]), 200);
     });
 
     // Reviews (Escritura y Edición)
