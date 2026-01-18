@@ -34,6 +34,7 @@ const AdminProductForm = () => import("../pages/admin/ProductForm.vue");
 const AdminUsers = () => import("../pages/admin/UserList.vue");
 const AdminOrders = () => import("../pages/admin/OrderList.vue");
 const AdminReviews = () => import("../pages/admin/ReviewList.vue");
+const AdminCoupons = () => import("../pages/admin/CouponList.vue");
 
 const router = createRouter({
     history: createWebHistory(),
@@ -115,6 +116,11 @@ const router = createRouter({
                     path: "reviews",
                     name: "admin-reviews",
                     component: AdminReviews
+                },
+                {
+                    path: 'coupons',
+                    name: 'AdminCoupons',
+                    component: AdminCoupons
                 }
             ]
         },

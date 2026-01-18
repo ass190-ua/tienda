@@ -5,7 +5,7 @@
                 <v-col cols="12" md="4" lg="3">
                     <div class="d-flex align-center mb-3">
                         <v-icon icon="mdi-feather" color="primary" size="28" class="mr-2" />
-                        <span class="text-h6 font-weight-bold">TiendaModa</span>
+                        <span class="text-h6 font-weight-bold">BeUrban</span>
                     </div>
                     <p class="text-medium-emphasis text-body-2 mb-3" style="line-height: 1.6; max-width: 300px;">
                         Diseño contemporáneo para la vida moderna. Calidad y estilo en cada detalle.
@@ -26,9 +26,9 @@
                 <v-col cols="6" md="2" lg="2" offset-lg="1">
                     <h4 class="text-subtitle-1 font-weight-bold mb-3">Explorar</h4>
                     <div class="d-flex flex-column gap-1">
-                        <router-link to="/shop" class="footer-link">Novedades</router-link>
-                        <router-link to="/shop" class="footer-link">Mujer</router-link>
-                        <router-link to="/shop" class="footer-link">Hombre</router-link>
+                        <router-link to="/novedades" class="footer-link">Novedades</router-link>
+                        <router-link to="/shop?category=Mujer" class="footer-link">Mujer</router-link>
+                        <router-link to="/shop?category=Hombre" class="footer-link">Hombre</router-link>
                         <router-link to="/shop" class="footer-link">Colecciones</router-link>
                     </div>
                 </v-col>
@@ -51,16 +51,37 @@
                     </p>
 
                     <v-form @submit.prevent="onSubscribe">
-                        <v-text-field v-model="email" placeholder="Introduce tu email" variant="outlined"
-                            density="compact" bg-color="white" hide-details rounded="lg">
+                        <v-text-field
+                            v-model="email"
+                            placeholder="Introduce tu email"
+                            variant="outlined"
+                            density="compact"
+                            bg-color="white"
+                            hide-details
+                            rounded="lg"
+                            :disabled="loading"
+                        >
                             <template v-slot:append-inner>
-                                <v-btn color="black" variant="flat" size="small" class="text-none px-4" rounded="md"
-                                    @click="onSubscribe">
+                                <v-btn
+                                    color="black"
+                                    variant="flat"
+                                    size="small"
+                                    class="text-none px-4"
+                                    rounded="md"
+                                    @click="onSubscribe"
+                                    :loading="loading"
+                                >
                                     Ok
                                 </v-btn>
                             </template>
                         </v-text-field>
                     </v-form>
+
+                    <div v-if="message"
+                         class="text-caption mt-2 font-weight-medium"
+                         :class="isError ? 'text-red' : 'text-green-darken-1'">
+                        {{ message }}
+                    </div>
 
                     <div class="mt-4 opacity-60">
                         <div class="text-caption font-weight-bold mb-2 text-disabled">PAGO SEGURO</div>
@@ -75,14 +96,13 @@
 
             <v-divider class="my-4"></v-divider>
 
-            <div
-                class="d-flex flex-column flex-md-row justify-space-between align-center text-caption text-medium-emphasis">
+            <div class="d-flex flex-column flex-md-row justify-space-between align-center text-caption text-medium-emphasis">
                 <div class="mb-4 mb-md-0">
                     &copy; {{ year }} TiendaModa S.L. ·
                     <a href="#" class="text-decoration-none text-grey-darken-1">Privacidad</a> ·
-                    <router-link to="/terminos" class="text-decoration-none text-grey-darken-1">Términos y
-                        Condiciones</router-link>
-
+                    <router-link to="/terminos" class="text-decoration-none text-grey-darken-1">
+                        Términos y Condiciones
+                    </router-link>
                 </div>
 
                 <div class="d-flex gap-2">
@@ -97,16 +117,44 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref } from 'vue';
+import axios from 'axios';
 
-const year = new Date().getFullYear()
-const email = ref('')
+const email = ref('');
+const loading = ref(false);
+const message = ref('');
+const isError = ref(false);
+const year = new Date().getFullYear();
 
-function onSubscribe() {
+const onSubscribe = async () => {
     if (!email.value) return;
-    // Lógica futura
-    email.value = ''
-}
+
+    loading.value = true;
+    message.value = '';
+    isError.value = false;
+
+    try {
+        const response = await axios.post('/api/newsletter/subscribe', {
+            email: email.value
+        });
+
+        // Éxito
+        message.value = response.data.message;
+        email.value = ''; // Limpiar campo si salió bien
+    } catch (error) {
+        // Error
+        isError.value = true;
+        // Si el backend devuelve un mensaje específico (ej: "Ya estás suscrito"), lo mostramos
+        message.value = error.response?.data?.message || "Hubo un error al suscribirte. Inténtalo de nuevo.";
+    } finally {
+        loading.value = false;
+
+        // Opcional: Borrar el mensaje de éxito después de 5 segundos
+        if (!isError.value) {
+            setTimeout(() => { message.value = ''; }, 5000);
+        }
+    }
+};
 </script>
 
 <style scoped>
@@ -142,7 +190,6 @@ function onSubscribe() {
 .gap-1 {
     gap: 4px;
 }
-
 
 /* Borde superior muy sutil */
 .border-t {

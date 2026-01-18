@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminReviewController;
+use App\Http\Controllers\NewsletterController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +34,7 @@ use App\Http\Controllers\Admin\AdminReviewController;
 
 // Productos
 Route::get('/products/home', [ProductController::class, 'homeProducts']);
+Route::get('/products/home-grouped', [ProductController::class, 'homeGroupedProducts']);
 Route::get('/products/featured', [ProductController::class, 'featuredProducts']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('products/filters', [ProductController::class, 'filters']);
@@ -63,6 +65,9 @@ Route::middleware(['web'])->group(function () {
 // Contacto
 Route::post('/contact', [ContactController::class, 'send']);
 
+// Newsletter
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe']);
+
 // ==========================================
 // RUTAS PROTEGIDAS (CLIENTE)
 // ==========================================
@@ -78,16 +83,9 @@ Route::middleware(['web', 'auth'])->group(function () {
         return $request->user();
     });
 
-    Route::put('/user', function (Request $request) {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
+    Route::put('/user', [AuthController::class, 'updateProfile']);
 
-        $user = $request->user();
-        $user->update($data);
-
-        return response()->json($user->fresh());
-    });
+    Route::delete('/me', [AuthController::class, 'destroyMe']);
 
     // Direcciones del usuario autenticado
     Route::get('/addresses/me', [AddressController::class, 'me']);
@@ -320,8 +318,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         // Calculamos los ingresos (Solo de pedidos válidos/cobrados)
         // Usamos ->get() y ->sum('total') para usar el atributo calculado en el Modelo
         $revenue = \App\Models\Order::whereIn('status', $validStatuses)
-                    ->get()
-                    ->sum('total');
+            ->get()
+            ->sum('total');
 
         return response()->json([
             'users_count' => \App\Models\User::count(),
@@ -332,6 +330,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
             'revenue'     => $revenue, // El dinero SÍ se mantiene filtrado (solo lo real)
             'products_count' => \App\Models\Product::count(),
             'reviews_count' => \App\Models\Review::count(),
+            'coupons_count' => \App\Models\Coupon::count(),
         ]);
     });
 
@@ -358,7 +357,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/orders/{id}', [App\Http\Controllers\Admin\AdminOrderController::class, 'update']);
 
     // GESTIÓN DE REVIEWS
-    Route::get('/reviews', [App\Http\Controllers\Admin\AdminReviewController::class, 'index']); // <--- ESTA FALTABA
+    Route::get('/reviews', [App\Http\Controllers\Admin\AdminReviewController::class, 'index']);
     Route::delete('/reviews/{review}', [App\Http\Controllers\Admin\AdminReviewController::class, 'reject']);
     Route::patch('/reviews/{review}/approve', [App\Http\Controllers\Admin\AdminReviewController::class, 'approve']);
+
+    // GESTIÓN DE CUPONES
+    Route::get('/coupons', [\App\Http\Controllers\Admin\AdminCouponController::class, 'index']);
+    Route::post('/coupons', [\App\Http\Controllers\Admin\AdminCouponController::class, 'store']);
+    Route::put('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'update']);
+    Route::delete('/coupons/{id}', [\App\Http\Controllers\Admin\AdminCouponController::class, 'destroy']);
+    Route::patch('/coupons/{id}/toggle', [\App\Http\Controllers\Admin\AdminCouponController::class, 'toggleActive']);
 });
